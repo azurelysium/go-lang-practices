@@ -205,7 +205,7 @@ func list(database string, page, pageSize int, unreadOnly bool) {
 	}
 }
 
-func print(database, id string) {
+func show(database, id string) {
 	// fmt.Println("Database:", database)
 	// fmt.Println("Id:", id)
 
@@ -229,6 +229,86 @@ func print(database, id string) {
 	}
 }
 
+func read(database, id string, unread bool) {
+	// fmt.Println("Database:", database)
+	// fmt.Println("Id:", id)
+	// fmt.Println("Unread:", unread)
+
+	// Open SQLite database file
+	db, err := sql.Open("sqlite3", database)
+	checkErr(err)
+	defer db.Close()
+
+	stmt, err := db.Prepare("UPDATE articles SET read = ? WHERE id = ?")
+	checkErr(err)
+	_, err = stmt.Exec(!unread, id)
+	checkErr(err)
+}
+
+func archive(database, id string) {
+	// fmt.Println("Database:", database)
+	// fmt.Println("Id:", id)
+
+	// Open SQLite database file
+	db, err := sql.Open("sqlite3", database)
+	checkErr(err)
+	defer db.Close()
+
+	// Check if this article already exists in the database
+	var dummy string
+	err = db.QueryRow("SELECT title FROM archived WHERE id = ?", id).Scan(&dummy)
+	if err != sql.ErrNoRows {
+		fmt.Println("duplicate item.")
+		return
+	}
+
+	// Get article information from articles db
+	var title, content, url string
+	var created int
+	err = db.QueryRow("SELECT title, content, url, created FROM articles WHERE id = ?", id).Scan(&title, &content, &url, &created)
+	if err == sql.ErrNoRows {
+		fmt.Println("invalid article id.")
+		return
+	}
+
+	// Insert the article to archived db
+	stmt, err := db.Prepare("INSERT INTO archived(id, title, content, url, created, rating) values(?,?,?,?,?,?)")
+	checkErr(err)
+	_, err = stmt.Exec(id, title, content, url, created, 0)
+	checkErr(err)
+}
+
+func search(database, keyword string, containsContent bool) {
+	// fmt.Println("Database:", database)
+	// fmt.Println("Keyword:", keyword)
+	// fmt.Println("ContainsContent:", containsContent)
+
+	// Open SQLite database file
+	db, err := sql.Open("sqlite3", database)
+	checkErr(err)
+	defer db.Close()
+
+	whereCondition := fmt.Sprintf(" WHERE title LIKE '%%%s%%' ", keyword)
+	if containsContent {
+		whereCondition += fmt.Sprintf("OR content LIKE '%%%s%%' ", keyword)
+	}
+	statement := "SELECT id, title, created FROM articles" + whereCondition
+	statement += "ORDER BY created DESC"
+    rows, err := db.Query(statement)
+	checkErr(err)
+
+	defer rows.Close()
+	for rows.Next() {
+		var id, title string
+		var created int
+		rows.Scan(&id, &title, &created)
+		checkErr(err)
+
+		t := time.Unix(int64(created), int64(0))
+		fmt.Printf("%s\t%s\t%s\n", id, t.Format(time.UnixDate), title)
+	}
+}
+
 func main() {
 
 	// Subcommands
@@ -248,13 +328,23 @@ func main() {
 	listPageSizePtr := listCommand.Int("pageSize", 10, "The number of articles to be displayed in a page")
 	listUnreadOnlyPtr := listCommand.Bool("unreadOnly", false, "Exclude articles that are checked as read")
 
-	printCommand := flag.NewFlagSet("print", flag.ExitOnError)
-	printDatabasePtr := printCommand.String("database", "", "SQLite file where articles are stored")
-	printIdPtr := printCommand.String("id", "", "Article ID")
+	showCommand := flag.NewFlagSet("show", flag.ExitOnError)
+	showDatabasePtr := showCommand.String("database", "", "SQLite file where articles are stored")
+	showIdPtr := showCommand.String("id", "", "Article ID")
 
-	//readCommand := flag.NewFlagSet("read", flag.ExitOnError)
-	//archiveCommand := flag.NewFlagSet("archive", flag.ExitOnError)
-	//searchCommand := flag.NewFlagSet("search", flag.ExitOnError)
+	readCommand := flag.NewFlagSet("read", flag.ExitOnError)
+	readDatabasePtr := readCommand.String("database", "", "SQLite file where articles are stored")
+	readIdPtr := readCommand.String("id", "", "Article ID")
+	readUnreadPtr := readCommand.Bool("unread", false, "Set as unread")
+
+	archiveCommand := flag.NewFlagSet("archive", flag.ExitOnError)
+	archiveDatabasePtr := archiveCommand.String("database", "", "SQLite file where articles are stored")
+	archiveIdPtr := archiveCommand.String("id", "", "Article ID")
+
+	searchCommand := flag.NewFlagSet("search", flag.ExitOnError)
+	searchDatabasePtr := searchCommand.String("database", "", "SQLite file where articles are stored")
+	searchKeywordPtr := searchCommand.String("keyword", "", "Keyword for search")
+	searchContainsContentPtr := searchCommand.Bool("containsContent", false, "Contains the content of an article for search target")
 
 	if len(os.Args) < 2 {
 		fmt.Println("Subcommand required")
@@ -271,10 +361,20 @@ func main() {
 	case "list":
 		listCommand.Parse(os.Args[2:])
 		list(*listDatabasePtr, *listPagePtr, *listPageSizePtr, *listUnreadOnlyPtr)
-	case "print":
-		printCommand.Parse(os.Args[2:])
-		print(*printDatabasePtr, *printIdPtr)
+	case "show":
+		showCommand.Parse(os.Args[2:])
+		show(*showDatabasePtr, *showIdPtr)
+	case "read":
+		readCommand.Parse(os.Args[2:])
+		read(*readDatabasePtr, *readIdPtr, *readUnreadPtr)
+	case "archive":
+		archiveCommand.Parse(os.Args[2:])
+		archive(*archiveDatabasePtr, *archiveIdPtr)
+	case "search":
+		searchCommand.Parse(os.Args[2:])
+		search(*searchDatabasePtr, *searchKeywordPtr, *searchContainsContentPtr)
 	default:
+		fmt.Printf("Subcommand '%s' is not available.\n", os.Args[1])
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
