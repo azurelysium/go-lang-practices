@@ -1,4 +1,9 @@
 [
+    {"placeholder": "{URL}",
+     "listCommand": "curl 'http://m.news.naver.com/mainNews/moreMainNews.json?pageSize=20&page=1' | jq '.message.itemList[].linkUrl' | xargs -I'{}' sh -c 'echo \"http://m.news.naver.com{}\"'",
+     "titleCommand": "tweezer '{URL}' '#articleTitle' :get: '{}' :print:",
+     "contentCommand": "tweezer '{URL}' '#dic_area' :get: '{}' :print:"
+    },
     {"placeholder": "{PARAMS}",
      "listCommand": "(wget 'http://www.khan.co.kr/rss/rssdata/total_news.xml' -O /tmp/gisa.xml; echo '/rss/channel/item/link/text()' > /tmp/gisa.xpath; xqilla -p -i /tmp/gisa.xml /tmp/gisa.xpath | sed -r -e 's/[^\\?]+//')",
      "titleCommand": "(tweezer 'http://m.khan.co.kr/view.html{PARAMS}' '#content > div.mc1 > div.news_content > div.news_head > div.subject' :get: '{}' :print: > /tmp/gisa.txt; iconv -f euc-kr -t utf-8 /tmp/gisa.txt)",
