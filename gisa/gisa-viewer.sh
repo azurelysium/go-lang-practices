@@ -45,7 +45,7 @@ while true; do
             break
         elif [ $COMMAND = "i" ]; then
             while true; do
-                echo -e -n "\nSelect an article to be ignored [0-9] >>"
+                echo -e -n "\nSelect an article to be ignored [0-9] >> "
                 read -n 1 COMMAND
                 if [[ $COMMAND =~ $RE_NUMBER ]]; then
                     $GISA_BIN ignore --database $DATABASE --id ${ARTICLE_IDS[$COMMAND]}
@@ -56,7 +56,7 @@ while true; do
             done
         elif [ $COMMAND = "a" ]; then
             while true; do
-                echo -e -n "\nSelect an article to be archived [0-9] >>"
+                echo -e -n "\nSelect an article to be archived [0-9] >> "
                 read -n 1 COMMAND
                 if [[ $COMMAND =~ $RE_NUMBER ]]; then
                     $GISA_BIN archive --database $DATABASE --id ${ARTICLE_IDS[$COMMAND]}
