@@ -39,15 +39,8 @@ func removeEmptyString(slice []string) []string {
 	return newSlice
 }
 
-func scrape(sources, database string, interval, limit int) {
-	fmt.Println("Sources:", sources)
+func prepare(database string) {
 	fmt.Println("Database:", database)
-	fmt.Println("Interval:", interval)
-	fmt.Println("Limit:", limit)
-
-	// Open SQLite database file
-	db, err := sql.Open("sqlite3", database)
-	checkErr(err)
 
 	// DB Schema
 	
@@ -59,6 +52,50 @@ func scrape(sources, database string, interval, limit int) {
 	// 	...> 'created' INTEGER,
     // 	...> 'read' BOOLEAN
 	// 	...> );
+	// Open SQLite database file
+
+	db, err := sql.Open("sqlite3", database)
+	checkErr(err)
+	defer db.Close()
+
+	stmt, err := db.Prepare(
+		`CREATE TABLE 'articles' (
+           'id' TEXT PRIMARY KEY,
+           'title' TEXT,
+           'content' TEXT,
+           'url' TEXT,
+           'created' INTEGER,
+           'read' BOOLEAN
+         )`)
+	checkErr(err)
+	_, err = stmt.Exec()
+	checkErr(err)
+
+	stmt, err = db.Prepare(
+		`CREATE TABLE 'archived' (
+           'id' TEXT PRIMARY KEY,
+           'title' TEXT,
+           'content' TEXT,
+           'url' TEXT,
+           'created' INTEGER,
+           'rating' INTEGER
+         )`)
+	checkErr(err)
+	_, err = stmt.Exec()
+	checkErr(err)
+}
+
+func scrape(sources, database string, interval, delay, limit int) {
+	fmt.Println("Sources:", sources)
+	fmt.Println("Database:", database)
+	fmt.Println("Interval:", interval)
+	fmt.Println("Delay:", delay)
+	fmt.Println("Limit:", limit)
+
+	// Open SQLite database file
+	db, err := sql.Open("sqlite3", database)
+	checkErr(err)
+	defer db.Close()
 
 	// Read article sources
 	dat, err := ioutil.ReadFile(sources)
@@ -104,7 +141,11 @@ func scrape(sources, database string, interval, limit int) {
 				cmd.Stdout = &out
 				out.Reset()
 				err = cmd.Run()
-				checkErr(err)
+				if err != nil {
+					fmt.Println("Failed to retrieve an article")
+					continue
+				}
+				//checkErr(err)
 				content := strings.TrimSpace(out.String())
 
 				t := time.Now()
@@ -116,6 +157,8 @@ func scrape(sources, database string, interval, limit int) {
 
 				_, err = stmt.Exec(id, title, content, url, created, false)
 				checkErr(err)
+
+				time.Sleep(time.Duration(delay) * 1000 * time.Millisecond)
 			}
 		}
 
@@ -139,6 +182,7 @@ func list(database string, page, pageSize int, unreadOnly bool) {
 	// Open SQLite database file
 	db, err := sql.Open("sqlite3", database)
 	checkErr(err)
+	defer db.Close()
 
 	statement := "SELECT id, title, created FROM articles "
 	if unreadOnly {
@@ -168,6 +212,7 @@ func print(database, id string) {
 	// Open SQLite database file
 	db, err := sql.Open("sqlite3", database)
 	checkErr(err)
+	defer db.Close()
 
     rows, err := db.Query("SELECT title, content, created FROM articles WHERE id = ?", id)
 	checkErr(err)
@@ -187,22 +232,23 @@ func print(database, id string) {
 func main() {
 
 	// Subcommands
+	prepareCommand := flag.NewFlagSet("prepare", flag.ExitOnError)
+	prepareDatabasePtr := prepareCommand.String("database", "", "SQLite file where articles will be stored")
+	
 	scrapeCommand := flag.NewFlagSet("scrape", flag.ExitOnError)
-
 	scrapeSourcesPtr := scrapeCommand.String("sources", "", "JSON file defining news article sources")
 	scrapeDatabasePtr := scrapeCommand.String("database", "", "SQLite file where articles will be stored")
-	scrapeIntervalPtr := scrapeCommand.Int("interval", 600, "Interval beween news article retrieval")
+	scrapeIntervalPtr := scrapeCommand.Int("interval", 600, "Interval between retrieval batch")
+	scrapeDelayPtr := scrapeCommand.Int("delay", 1, "Delay between new article retrieval")
 	scrapeLimitPtr := scrapeCommand.Int("limit", 10000, "Maximum articles to be saved")
 
 	listCommand := flag.NewFlagSet("list", flag.ExitOnError)
-
 	listDatabasePtr := listCommand.String("database", "", "SQLite file where articles are stored")
 	listPagePtr := listCommand.Int("page", 0, "Page number when articles are sliced by page size unit")
 	listPageSizePtr := listCommand.Int("pageSize", 10, "The number of articles to be displayed in a page")
 	listUnreadOnlyPtr := listCommand.Bool("unreadOnly", false, "Exclude articles that are checked as read")
 
 	printCommand := flag.NewFlagSet("print", flag.ExitOnError)
-
 	printDatabasePtr := printCommand.String("database", "", "SQLite file where articles are stored")
 	printIdPtr := printCommand.String("id", "", "Article ID")
 
@@ -216,9 +262,12 @@ func main() {
 	}
 
 	switch os.Args[1] {
+	case "prepare":
+		prepareCommand.Parse(os.Args[2:])
+		prepare(*prepareDatabasePtr)
 	case "scrape":
 		scrapeCommand.Parse(os.Args[2:])
-		scrape(*scrapeSourcesPtr, *scrapeDatabasePtr, *scrapeIntervalPtr, *scrapeLimitPtr)
+		scrape(*scrapeSourcesPtr, *scrapeDatabasePtr, *scrapeIntervalPtr, *scrapeDelayPtr, *scrapeLimitPtr)
 	case "list":
 		listCommand.Parse(os.Args[2:])
 		list(*listDatabasePtr, *listPagePtr, *listPageSizePtr, *listUnreadOnlyPtr)

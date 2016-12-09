@@ -1,0 +1,7 @@
+[
+    {"placeholder": "{PARAMS}",
+     "listCommand": "(wget 'http://www.khan.co.kr/rss/rssdata/total_news.xml' -O /tmp/gisa.xml; echo '/rss/channel/item/link/text()' > /tmp/gisa.xpath; xqilla -p -i /tmp/gisa.xml /tmp/gisa.xpath | sed -r -e 's/[^\\?]+//')",
+     "titleCommand": "(tweezer 'http://m.khan.co.kr/view.html{PARAMS}' '#content > div.mc1 > div.news_content > div.news_head > div.subject' :get: '{}' :print: > /tmp/gisa.txt; iconv -f euc-kr -t utf-8 /tmp/gisa.txt)",
+     "contentCommand": "(tweezer 'http://m.khan.co.kr/view.html{PARAMS}' '#content > div.mc1 > div.news_content > div.txt_news' :get: '{}' :print: > /tmp/gisa.txt; iconv -f euc-kr -t utf-8 /tmp/gisa.txt)"
+    }
+]
