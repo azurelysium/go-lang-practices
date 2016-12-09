@@ -19,11 +19,17 @@ while true; do
         ID=$( echo "$ARTICLE" | cut -f1)
         ARTICLE_IDS+=($ID)
 
-        TITLE=$( echo "$ARTICLE" | cut -f3)
-        echo "[$i] $TITLE"
+        READ=$( echo "$ARTICLE" | cut -f3)
+        TITLE=$( echo "$ARTICLE" | cut -f4)
+        if [ $READ = "1" ]; then
+            READ="*"
+        else
+            READ=" "
+        fi
+        echo "$i: [$READ] $TITLE"
     done
 
-    echo -e -n "\n[n,p,0-9,a,q] >> "
+    echo -e -n "\n[n,p,0-9,i,a,q] >> "
     read -n 1 COMMAND
 
     RE_NUMBER='^[0-9]+$'
@@ -36,7 +42,18 @@ while true; do
         elif [ $COMMAND = "p" ]; then
             PAGE=$((PAGE - 1))
         elif [ $COMMAND = "q" ]; then
-            exit
+            break
+        elif [ $COMMAND = "i" ]; then
+            while true; do
+                echo -e -n "\nSelect an article to be ignored [0-9] >>"
+                read -n 1 COMMAND
+                if [[ $COMMAND =~ $RE_NUMBER ]]; then
+                    $GISA_BIN ignore --database $DATABASE --id ${ARTICLE_IDS[$COMMAND]}
+                    echo -e " .. ignored."
+                    sleep 1
+                    break
+                fi
+            done
         elif [ $COMMAND = "a" ]; then
             while true; do
                 echo -e -n "\nSelect an article to be archived [0-9] >>"

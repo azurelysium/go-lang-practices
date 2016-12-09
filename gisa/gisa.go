@@ -65,7 +65,8 @@ func prepare(database string) {
            'content' TEXT,
            'url' TEXT,
            'created' INTEGER,
-           'read' BOOLEAN
+           'read' BOOLEAN,
+           'ignored' BOOLEAN
          )`)
 	checkErr(err)
 	_, err = stmt.Exec()
@@ -152,10 +153,10 @@ func scrape(sources, database string, interval, delay, limit int) {
 				created := t.Unix()
 
 				// Insert to the articles database
-				stmt, err := db.Prepare("INSERT INTO articles(id, title, content, url, created, read) values(?,?,?,?,?,?)")
+				stmt, err := db.Prepare("INSERT INTO articles(id, title, content, url, created, read, ignored) values(?,?,?,?,?,?,?)")
 				checkErr(err)
 
-				_, err = stmt.Exec(id, title, content, url, created, false)
+				_, err = stmt.Exec(id, title, content, url, created, false, false)
 				checkErr(err)
 
 				time.Sleep(time.Duration(delay) * 1000 * time.Millisecond)
@@ -184,9 +185,9 @@ func list(database string, page, pageSize int, unreadOnly bool) {
 	checkErr(err)
 	defer db.Close()
 
-	statement := "SELECT id, title, created FROM articles "
+	statement := "SELECT id, title, created, read FROM articles WHERE ignored = 0 "
 	if unreadOnly {
-		statement += "WHERE read = 0 "
+		statement += "AND read = 0 "
 	}
 	statement += "ORDER BY created DESC LIMIT ? OFFSET ?"
 
@@ -197,11 +198,15 @@ func list(database string, page, pageSize int, unreadOnly bool) {
 	for rows.Next() {
 		var id, title string
 		var created int
-		rows.Scan(&id, &title, &created)
+		var read bool
+		rows.Scan(&id, &title, &created, &read)
 		checkErr(err)
-
+		readNum := 0
+		if read {
+			readNum = 1
+		}
 		t := time.Unix(int64(created), int64(0))
-		fmt.Printf("%s\t%s\t%s\n", id, t.Format(time.UnixDate), title)
+		fmt.Printf("%s\t%s\t%d\t%s\n", id, t.Format(time.UnixDate), readNum, title)
 	}
 }
 
@@ -242,6 +247,21 @@ func read(database, id string, unread bool) {
 	stmt, err := db.Prepare("UPDATE articles SET read = ? WHERE id = ?")
 	checkErr(err)
 	_, err = stmt.Exec(!unread, id)
+	checkErr(err)
+}
+
+func ignore(database, id string) {
+	// fmt.Println("Database:", database)
+	// fmt.Println("Id:", id)
+
+	// Open SQLite database file
+	db, err := sql.Open("sqlite3", database)
+	checkErr(err)
+	defer db.Close()
+
+	stmt, err := db.Prepare("UPDATE articles SET ignored = ? WHERE id = ?")
+	checkErr(err)
+	_, err = stmt.Exec(true, id)
 	checkErr(err)
 }
 
@@ -337,6 +357,10 @@ func main() {
 	readIdPtr := readCommand.String("id", "", "Article ID")
 	readUnreadPtr := readCommand.Bool("unread", false, "Set as unread")
 
+	ignoreCommand := flag.NewFlagSet("ignore", flag.ExitOnError)
+	ignoreDatabasePtr := ignoreCommand.String("database", "", "SQLite file where articles are stored")
+	ignoreIdPtr := ignoreCommand.String("id", "", "Article ID")
+
 	archiveCommand := flag.NewFlagSet("archive", flag.ExitOnError)
 	archiveDatabasePtr := archiveCommand.String("database", "", "SQLite file where articles are stored")
 	archiveIdPtr := archiveCommand.String("id", "", "Article ID")
@@ -367,6 +391,9 @@ func main() {
 	case "read":
 		readCommand.Parse(os.Args[2:])
 		read(*readDatabasePtr, *readIdPtr, *readUnreadPtr)
+	case "ignore":
+		ignoreCommand.Parse(os.Args[2:])
+		ignore(*ignoreDatabasePtr, *ignoreIdPtr)
 	case "archive":
 		archiveCommand.Parse(os.Args[2:])
 		archive(*archiveDatabasePtr, *archiveIdPtr)
