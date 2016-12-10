@@ -6,6 +6,7 @@ PAGE_SIZE=10
 PAGE=0
 UNREAD_ONLY=false
 
+RECENT_ID=''
 while true; do
     clear
     echo -e "PAGE: $PAGE\n"
@@ -32,8 +33,9 @@ while true; do
     echo -e -n "\n[n,p,0-9,i,a,q] >> "
     read -n 1 COMMAND
 
-    RE_NUMBER='^[0-9]+$'
+    RE_NUMBER='^[0-9]+$'    
     if [[ $COMMAND =~ $RE_NUMBER ]]; then
+        RECENT_ID=${ARTICLE_IDS[$COMMAND]}
         $GISA_BIN read --database $DATABASE --id ${ARTICLE_IDS[$COMMAND]}
         $GISA_BIN show --database $DATABASE --id ${ARTICLE_IDS[$COMMAND]} | fold -w 120 -s | most -d -s-w
     else
@@ -55,16 +57,13 @@ while true; do
                 fi
             done
         elif [ $COMMAND = "a" ]; then
-            while true; do
-                echo -e -n "\nSelect an article to be archived [0-9] >> "
-                read -n 1 COMMAND
-                if [[ $COMMAND =~ $RE_NUMBER ]]; then
-                    $GISA_BIN archive --database $DATABASE --id ${ARTICLE_IDS[$COMMAND]}
-                    echo -e " .. archived."
-                    sleep 1
-                    break
-                fi
-            done
+            if [ $COMMAND = "" ]; then
+                echo -e " .. RECENT_ID is null."
+            else
+                $GISA_BIN archive --database $DATABASE --id $RECENT_ID
+                echo -e " .. $RECENT_ID archived."
+            fi
+            sleep 1
         fi
     fi
 done
