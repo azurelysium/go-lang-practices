@@ -35,7 +35,7 @@ while true; do
     RE_NUMBER='^[0-9]+$'
     if [[ $COMMAND =~ $RE_NUMBER ]]; then
         $GISA_BIN read --database $DATABASE --id ${ARTICLE_IDS[$COMMAND]}
-        $GISA_BIN show --database $DATABASE --id ${ARTICLE_IDS[$COMMAND]} | most -d -s -w
+        $GISA_BIN show --database $DATABASE --id ${ARTICLE_IDS[$COMMAND]} | fold -w 120 -s | most -d -s-w
     else
         if [ $COMMAND = "n" ]; then
             PAGE=$((PAGE + 1))

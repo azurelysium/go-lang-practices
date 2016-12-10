@@ -4,9 +4,46 @@
      "titleCommand": "tweezer '{URL}' '#articleTitle' :get: '{}' :print:",
      "contentCommand": "tweezer '{URL}' '#dic_area' :get: '{}' :print:"
     },
+
     {"placeholder": "{PARAMS}",
      "listCommand": "(wget 'http://www.khan.co.kr/rss/rssdata/total_news.xml' -O /tmp/gisa.xml; echo '/rss/channel/item/link/text()' > /tmp/gisa.xpath; xqilla -p -i /tmp/gisa.xml /tmp/gisa.xpath | sed -r -e 's/[^\\?]+//')",
      "titleCommand": "(tweezer 'http://m.khan.co.kr/view.html{PARAMS}' '#content > div.mc1 > div.news_content > div.news_head > div.subject' :get: '{}' :print: > /tmp/gisa.txt; iconv -f euc-kr -t utf-8 /tmp/gisa.txt)",
      "contentCommand": "(tweezer 'http://m.khan.co.kr/view.html{PARAMS}' '#content > div.mc1 > div.news_content > div.txt_news' :get: '{}' :print: > /tmp/gisa.txt; iconv -f euc-kr -t utf-8 /tmp/gisa.txt)"
+    },
+
+    {"placeholder": "{URL}",
+     "listCommand": "(wget 'http://rss.segye.com/segye_culture.xml' -O /tmp/gisa.xml; echo '/rss/channel/item/link/text()' > /tmp/gisa.xpath; xqilla -p -i /tmp/gisa.xml /tmp/gisa.xpath)",
+     "titleCommand": "tweezer '{URL}' 'body > div.container > div.content > div.titleh1' :get: '{}' :print:",
+     "contentCommand": "tweezer '{URL}' '#article_txt' :get: '{}' :print:"
+    },
+
+    {"placeholder": "{URL}",
+     "listCommand": "(wget 'http://rss.segye.com/segye_international.xml' -O /tmp/gisa.xml; echo '/rss/channel/item/link/text()' > /tmp/gisa.xpath; xqilla -p -i /tmp/gisa.xml /tmp/gisa.xpath)",
+     "titleCommand": "tweezer '{URL}' 'body > div.container > div.content > div.titleh1' :get: '{}' :print:",
+     "contentCommand": "tweezer '{URL}' '#article_txt' :get: '{}' :print:"
+    },
+
+    {"placeholder": "{URL}",
+     "listCommand": "(wget 'http://www.hani.co.kr/rss/culture/' -O /tmp/gisa.xml; echo '/rss/channel/item/link/text()' > /tmp/gisa.xpath; xqilla -p -i /tmp/gisa.xml /tmp/gisa.xpath)",
+     "titleCommand": "tweezer '{URL}' '#article_view_headline > h4 > span' :get: '{}' :print:",
+     "contentCommand": "tweezer '{URL}' 'div.article-text' :get: '{}' :print:"
+    },
+
+    {"placeholder": "{URL}",
+     "listCommand": "(wget 'http://www.hani.co.kr/rss/science/' -O /tmp/gisa.xml; echo '/rss/channel/item/link/text()' > /tmp/gisa.xpath; xqilla -p -i /tmp/gisa.xml /tmp/gisa.xpath)",
+     "titleCommand": "tweezer '{URL}' '#article_view_headline > h4 > span' :get: '{}' :print:",
+     "contentCommand": "tweezer '{URL}' 'div.article-text' :get: '{}' :print:"
+    },
+
+    {"placeholder": "{URL}",
+     "listCommand": "(wget 'http://www.hani.co.kr/rss/opinion/' -O /tmp/gisa.xml; echo '/rss/channel/item/link/text()' > /tmp/gisa.xpath; xqilla -p -i /tmp/gisa.xml /tmp/gisa.xpath)",
+     "titleCommand": "tweezer '{URL}' '#article_view_headline > h4 > span' :get: '{}' :print:",
+     "contentCommand": "tweezer '{URL}' 'div.article-text' :get: '{}' :print:"
+    },
+
+    {"placeholder": "{URL}",
+     "listCommand": "(wget 'http://www.hani.co.kr/rss/international/' -O /tmp/gisa.xml; echo '/rss/channel/item/link/text()' > /tmp/gisa.xpath; xqilla -p -i /tmp/gisa.xml /tmp/gisa.xpath)",
+     "titleCommand": "tweezer '{URL}' '#article_view_headline > h4 > span' :get: '{}' :print:",
+     "contentCommand": "tweezer '{URL}' 'div.article-text' :get: '{}' :print:"
     }
 ]
