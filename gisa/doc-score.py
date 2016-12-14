@@ -56,14 +56,14 @@ def get_documents(extra_clause):
             documents.append(document)
     return documents
 
-def get_all_documents(limit):
-    return get_documents('WHERE ignored = 0 LIMIT {}'.format(limit))
-def get_read_documents(read=True):
-    return get_documents('WHERE ignored = 0 AND read = {}'.format(1 if read else 0))
+def get_train_documents(limit):
+    return get_documents('WHERE ignored = 0 ORDER BY created DESC LIMIT {}'.format(limit))
+def get_read_documents(limit, read=True):
+    return get_documents('WHERE ignored = 0 AND read = {} ORDER BY created DESC LIMIT {}'.format(1 if read else 0, limit))
 
 def train(args):
     print '>> Train Doc2Vec model for news articles'
-    docs = get_all_documents(args.limit)
+    docs = get_train_documents(args.limit)
     print '#docs({})'.format(len(docs))
 
     print '>> Prepare input data'
@@ -85,7 +85,7 @@ def train(args):
 
 def score(args):
     print '>> Score news articles using Doc2Vec model'
-    docs_read = get_read_documents()
+    docs_read = get_read_documents(args.limit)
     print '#docs_read({})'.format(len(docs_read))
 
     print '>> Load model ({})'.format(D2V_MODEL)
@@ -103,11 +103,15 @@ def score(args):
     mean_vector = numpy.mean(vectors, axis=0)
 
     print '>> Score articles'
-    docs_unread = get_read_documents(False)
+    docs_unread = get_read_documents(args.limit, False)
     print '#docs_unread({})'.format(len(docs_unread))
 
     with sqlite3.connect(DATABASE) as conn:
         c = conn.cursor()
+
+        # Reset scores
+        c.execute('UPDATE articles SET score = 0.0')
+        conn.commit()
 
         updates = []
         for i in tqdm(range(len(docs_unread))):
@@ -135,6 +139,7 @@ if __name__ == '__main__':
 
     score_parser = subparsers.add_parser("score")
     score_parser.set_defaults(func=score)
+    score_parser.add_argument('--limit', metavar='N', default=10000, type=int, help='the number of documents to be scored')
 
     args = parser.parse_args()
     args.func(args)
