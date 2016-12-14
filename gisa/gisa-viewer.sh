@@ -5,12 +5,16 @@ DATABASE=/home/azurelysium/Documents/articles.db
 PAGE_SIZE=10
 PAGE=0
 UNREAD_ONLY=false
+USE_SCORE=false
+if [ $1 = "scored" ]; then
+   USE_SCORE=true
+fi
 
 RECENT_ID=''
 while true; do
     clear
     echo -e "PAGE: $PAGE\n"
-    mapfile -t ARTICLES < <( $GISA_BIN list --database $DATABASE --pageSize $PAGE_SIZE --page $PAGE --unreadOnly=$UNREAD_ONLY)
+    mapfile -t ARTICLES < <( $GISA_BIN list --database $DATABASE --pageSize $PAGE_SIZE --page $PAGE --unreadOnly=$UNREAD_ONLY --useScore=$USE_SCORE )
 
     ARTICLE_IDS=()
     for i in "${!ARTICLES[@]}"
@@ -37,7 +41,7 @@ while true; do
     if [[ $COMMAND =~ $RE_NUMBER ]]; then
         RECENT_ID=${ARTICLE_IDS[$COMMAND]}
         $GISA_BIN read --database $DATABASE --id ${ARTICLE_IDS[$COMMAND]}
-        $GISA_BIN show --database $DATABASE --id ${ARTICLE_IDS[$COMMAND]} | fold -w 120 -s | most -d -s-w
+        $GISA_BIN show --database $DATABASE --id ${ARTICLE_IDS[$COMMAND]} | fold -w 120 -s | sed -r -e 's/^.+$/&\n/g' | most -d -s-w
     else
         if [ $COMMAND = "n" ]; then
             PAGE=$((PAGE + 1))

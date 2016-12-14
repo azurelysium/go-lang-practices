@@ -42,45 +42,30 @@ func removeEmptyString(slice []string) []string {
 func prepare(database string) {
 	fmt.Println("Database:", database)
 
-	// DB Schema
-	
-	// CREATE TABLE 'articles' (
-	// 	...> 'id' TEXT PRIMARY KEY,
-	// 	...> 'title' TEXT,
-	// 	...> 'content' TEXT,
-	// 	...> 'url' TEXT,
-	// 	...> 'created' INTEGER,
-    // 	...> 'read' BOOLEAN
-	// 	...> );
 	// Open SQLite database file
-
 	db, err := sql.Open("sqlite3", database)
 	checkErr(err)
 	defer db.Close()
 
-	stmt, err := db.Prepare(
-		`CREATE TABLE 'articles' (
-           'id' TEXT PRIMARY KEY,
-           'title' TEXT,
-           'content' TEXT,
-           'url' TEXT,
-           'created' INTEGER,
-           'read' BOOLEAN,
-           'ignored' BOOLEAN
-         )`)
+	schema := `CREATE TABLE '%s' (
+                'id' TEXT PRIMARY KEY,
+                'title' TEXT,
+                'content' TEXT,
+                'url' TEXT,
+                'created' INTEGER,
+                'read' BOOLEAN,
+                'ignored' BOOLEAN,
+                'score' REAL
+               )`
+
+	query := fmt.Sprintf(schema, "articles")
+	stmt, err := db.Prepare(query)
 	checkErr(err)
 	_, err = stmt.Exec()
 	checkErr(err)
 
-	stmt, err = db.Prepare(
-		`CREATE TABLE 'archived' (
-           'id' TEXT PRIMARY KEY,
-           'title' TEXT,
-           'content' TEXT,
-           'url' TEXT,
-           'created' INTEGER,
-           'rating' INTEGER
-         )`)
+	query = fmt.Sprintf(schema, "archived")
+	stmt, err = db.Prepare(query)
 	checkErr(err)
 	_, err = stmt.Exec()
 	checkErr(err)
@@ -174,24 +159,30 @@ func scrape(sources, database string, interval, delay, limit int) {
 	}
 }
 
-func list(database string, page, pageSize int, unreadOnly bool) {
+func list(database string, page, pageSize int, unreadOnly bool, useScore bool) {
 	// fmt.Println("Database:", database)
 	// fmt.Println("Page:", page)
 	// fmt.Println("PageSize:", pageSize)
 	// fmt.Println("UnreadOnly:", unreadOnly)
+	// fmt.Println("UseScore:", useScore)
 
 	// Open SQLite database file
 	db, err := sql.Open("sqlite3", database)
 	checkErr(err)
 	defer db.Close()
 
-	statement := "SELECT id, title, created, read FROM articles WHERE ignored = 0 "
+	query := "SELECT id, title, created, read FROM articles WHERE ignored = 0 "
 	if unreadOnly {
-		statement += "AND read = 0 "
+		query += "AND read = 0 "
 	}
-	statement += "ORDER BY created DESC LIMIT ? OFFSET ?"
 
-    rows, err := db.Query(statement, pageSize, page * pageSize)
+	if useScore {
+		query += "ORDER BY score DESC LIMIT ? OFFSET ?"
+	} else {
+		query += "ORDER BY created DESC LIMIT ? OFFSET ?"
+	}
+
+    rows, err := db.Query(query, pageSize, page * pageSize)
 	checkErr(err)
 
 	defer rows.Close()
@@ -292,7 +283,7 @@ func archive(database, id string) {
 	}
 
 	// Insert the article to archived db
-	stmt, err := db.Prepare("INSERT INTO archived(id, title, content, url, created, rating) values(?,?,?,?,?,?)")
+	stmt, err := db.Prepare("INSERT INTO archived(id, title, content, url, created, score) values(?,?,?,?,?,?)")
 	checkErr(err)
 	_, err = stmt.Exec(id, title, content, url, created, 0)
 	checkErr(err)
@@ -312,9 +303,9 @@ func search(database, keyword string, containsContent bool) {
 	if containsContent {
 		whereCondition += fmt.Sprintf("OR content LIKE '%%%s%%' ", keyword)
 	}
-	statement := "SELECT id, title, created FROM articles" + whereCondition
-	statement += "ORDER BY created DESC"
-    rows, err := db.Query(statement)
+	query := "SELECT id, title, created FROM articles" + whereCondition
+	query += "ORDER BY created DESC"
+    rows, err := db.Query(query)
 	checkErr(err)
 
 	defer rows.Close()
@@ -347,6 +338,7 @@ func main() {
 	listPagePtr := listCommand.Int("page", 0, "Page number when articles are sliced by page size unit")
 	listPageSizePtr := listCommand.Int("pageSize", 10, "The number of articles to be displayed in a page")
 	listUnreadOnlyPtr := listCommand.Bool("unreadOnly", false, "Exclude articles that are checked as read")
+	listUseScorePtr := listCommand.Bool("useScore", false, "Use score field's value as criteria for sorting articles")
 
 	showCommand := flag.NewFlagSet("show", flag.ExitOnError)
 	showDatabasePtr := showCommand.String("database", "", "SQLite file where articles are stored")
@@ -384,7 +376,7 @@ func main() {
 		scrape(*scrapeSourcesPtr, *scrapeDatabasePtr, *scrapeIntervalPtr, *scrapeDelayPtr, *scrapeLimitPtr)
 	case "list":
 		listCommand.Parse(os.Args[2:])
-		list(*listDatabasePtr, *listPagePtr, *listPageSizePtr, *listUnreadOnlyPtr)
+		list(*listDatabasePtr, *listPagePtr, *listPageSizePtr, *listUnreadOnlyPtr, *listUseScorePtr)
 	case "show":
 		showCommand.Parse(os.Args[2:])
 		show(*showDatabasePtr, *showIdPtr)
