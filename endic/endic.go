@@ -19,7 +19,7 @@ func main() {
 		"http://ac.endic.naver.com/ac?q_enc=utf-8&st=1100&r_format=json&r_enc=utf-8",
 		"http://ac.endic.naver.com/ac?q_enc=utf-8&st=11001&r_format=json&r_enc=utf-8&r_lt=10001&r_unicode=0&r_escape=1"} {
 
-		keyword := strings.Replace(" ", "%%20", os.Args[1], -1)
+		keyword := strings.Replace(os.Args[1], " ", "%20", -1)
 		url = url + "&q=" + keyword
     
 		resp, err := http.Get(url)
