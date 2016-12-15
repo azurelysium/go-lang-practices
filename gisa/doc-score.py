@@ -75,7 +75,7 @@ def train(args):
         documents.append(doc)
 
     print '>> Train, #iter({})'.format(args.iter)
-    model = doc2vec.Doc2Vec(alpha=0.025, min_alpha=0.025, workers=1)
+    model = doc2vec.Doc2Vec(alpha=0.025, min_alpha=0.025, workers=args.workers)
     model.build_vocab(documents)
     for epoch in tqdm(range(args.iter)):
         model.train(documents)
@@ -135,6 +135,7 @@ if __name__ == '__main__':
     train_parser = subparsers.add_parser("train")
     train_parser.add_argument('--limit', metavar='N', default=10000, type=int, help='the number of documents to be used for training d2v model')
     train_parser.add_argument('--iter', metavar='N', default=10, type=int, help='the number of iteration for training d2v model')
+    train_parser.add_argument('--workers', metavar='N', default=1, type=int, help='the number of cores to use')
     train_parser.set_defaults(func=train)
 
     score_parser = subparsers.add_parser("score")
