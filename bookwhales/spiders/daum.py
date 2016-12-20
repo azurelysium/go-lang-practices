@@ -20,12 +20,12 @@ class DaumSpider(scrapy.Spider):
     autothrottle_start_delay = 2
     autothrottle_target_concurrency = 1.0
 
-    def __init__(self, category='', leveldb_path=None, stop_duplicate=0, *args, **kwargs):
+    def __init__(self, category='', leveldb_path=None, stop_duplicate='0', *args, **kwargs):
         super(DaumSpider, self).__init__(*args, **kwargs)
 
         self.category = category
         self.leveldb = leveldb.LevelDB(leveldb_path)
-        self.stop_duplicate = stop_duplicate
+        self.stop_duplicate = int(stop_duplicate)
         self.n_duplicate = 0
 
         self.url_template = 'http://book.daum.net/category/book.do?cTab=06&sortType=1&saleStatus=&categoryID={}&pageNo={}&minValue={}&maxValue={}&pageAction={}'
